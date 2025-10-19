@@ -62,57 +62,9 @@ createMockRequest method pathSegments uri queryInputs = do
         , rqPeer            = ("127.0.0.1", 0)
         }
 
--- | A mock request for running ServerPartWithCourseInfoQuery, specifically for courseInfo
-mockRequestWithCourseInfoQuery :: String -> IO Request
-mockRequestWithCourseInfoQuery dept = do
-    inputsBody <- newMVar []
-    requestBody <- newEmptyMVar
-    return Request
-        { rqSecure          = False
-        , rqMethod          = GET
-        , rqPaths           = ["course-info"]
-        , rqUri             = "/course-info"
-        , rqQuery           = ""
-        , rqInputsQuery     = [("dept", Input {
-            inputValue = Right (BSL8.pack dept),
-            inputFilename = Nothing,
-            inputContentType = defaultContentType
-          })]
-        , rqInputsBody      = inputsBody
-        , rqCookies         = []
-        , rqVersion         = HttpVersion 1 1
-        , rqHeaders         = Map.empty
-        , rqBody            = requestBody
-        , rqPeer            = ("127.0.0.1", 0)
-        }
-
--- | A mock request for running ServerPartWithProgramQuery, specifically for retrieveProgram
-mockRequestWithProgramQuery :: String -> IO Request
-mockRequestWithProgramQuery programCode = do
-    inputsBody <- newMVar []
-    requestBody <- newEmptyMVar
-    return Request
-        { rqSecure          = False
-        , rqMethod          = GET
-        , rqPaths           = ["program"]
-        , rqUri             = "/program"
-        , rqQuery           = ""
-        , rqInputsQuery     = [("code", Input {
-            inputValue = Right (BSL8.pack programCode),
-            inputFilename = Nothing,
-            inputContentType = defaultContentType
-          })]
-        , rqInputsBody      = inputsBody
-        , rqCookies         = []
-        , rqVersion         = HttpVersion 1 1
-        , rqHeaders         = Map.empty
-        , rqBody            = requestBody
-        , rqPeer            = ("127.0.0.1", 0)
-        }
-
--- | A mock request for the graph generate route, specifically for findAndSavePrereqsResponse
-mockRequestWithGraphGenerate :: BSL.ByteString -> IO Request
-mockRequestWithGraphGenerate payload = do
+-- | Generalized function to create a mock request with a body payload
+createMockRequestWithBody :: Method -> [String] -> String -> BSL.ByteString -> IO Request
+createMockRequestWithBody method pathSegments uri payload = do
     inputsBody <- newMVar []
     requestBody <- newEmptyMVar
     putMVar requestBody (Body payload)
@@ -183,17 +135,15 @@ runServerPartWithQuery sp courseName =
 
 -- | Helper function to run ServerPart Response with a query parameter for courseInfo
 runServerPartWithCourseInfoQuery :: ServerPart Response -> String -> IO Response
-runServerPartWithCourseInfoQuery sp dept = do
-    request <- mockRequestWithCourseInfoQuery dept
-    simpleHTTP'' sp request
+runServerPartWithCourseInfoQuery sp dept = 
+    runServerPartWith sp (mockRequestWithCourseInfoQuery dept)
 
--- | Helper function to run ServerPartWithQuery Response for retrieveProgram
+-- | Helper function to run ServerPart Response with a query parameter for retrieveProgram
 runServerPartWithProgramQuery :: ServerPart Response -> String -> IO Response
-runServerPartWithProgramQuery sp programCode = do
-    request <- mockRequestWithProgramQuery programCode
-    simpleHTTP'' sp request
-    
--- | Helper function to run ServerPartWithGraphGenerate for findAndSavePrereqsResponse
+runServerPartWithProgramQuery sp programCode = 
+    runServerPartWith sp (mockRequestWithProgramQuery programCode)
+
+-- | Helper function to run ServerPart Response with a body payload for findAndSavePrereqsResponse
 runServerPartWithGraphGenerate :: ServerPart Response -> BSL.ByteString -> IO Response
 runServerPartWithGraphGenerate sp payload = 
     runServerPartWith sp (mockRequestWithGraphGenerate payload)
@@ -230,3 +180,4 @@ withDatabase ::  String -> [TestTree] -> TestTree
 withDatabase label tests =
     withResource acquireDatabase releaseDatabase $ \_ ->
     testGroup label tests
+    
